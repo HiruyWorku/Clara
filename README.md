@@ -1,1 +1,1 @@
-# Clara
+# Clara – Daily Room Organizer
