@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TextInput, Switch, Alert } from 'react-native';
+import { View, Text, Switch, Alert } from 'react-native';
 import { useSettingsStore } from '../stores/settings';
 import { requestPermissions, scheduleDailyReminder } from '../lib/notifications';
 import { exportAllToJson, shareFile } from '../lib/export';
 import ScreenWrapper from '../components/ScreenWrapper';
 import PrimaryButton from '../components/PrimaryButton';
+import TimePicker from '../components/TimePicker';
 import { useColors } from '../hooks/useColors';
 import { Typography, Spacing, BorderRadius, Shadows } from '../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -23,8 +24,8 @@ export default function SettingsScreen() {
   const setVoiceEnabled = useSettingsStore((s) => s.setVoiceEnabled);
   const setSttEnabled = useSettingsStore((s) => s.setSttEnabled);
 
-  const [hour, setHour] = useState('20');
-  const [min, setMin] = useState('0');
+  const [currentHour, setCurrentHour] = useState(20);
+  const [currentMinute, setCurrentMinute] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -39,8 +40,8 @@ export default function SettingsScreen() {
   );
 
   useEffect(() => {
-    if (notifyHour != null) setHour(String(notifyHour));
-    if (notifyMin != null) setMin(String(notifyMin));
+    if (notifyHour != null) setCurrentHour(notifyHour);
+    if (notifyMin != null) setCurrentMinute(notifyMin);
   }, [notifyHour, notifyMin]);
 
   const handleRefresh = async () => {
@@ -49,20 +50,24 @@ export default function SettingsScreen() {
     setRefreshing(false);
   };
 
+  const onTimeChange = (hour: number, minute: number) => {
+    setCurrentHour(hour);
+    setCurrentMinute(minute);
+  };
+
   const onSaveTime = async () => {
-    const h = parseInt(hour, 10);
-    const m = parseInt(min, 10);
-    if (Number.isNaN(h) || Number.isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
-      Alert.alert('Invalid time', 'Please enter a valid time (0-23 hours, 0-59 minutes)');
-      return;
-    }
-    
-    await setTime(h, m);
+    await setTime(currentHour, currentMinute);
     const granted = await requestPermissions();
     if (granted) {
-      await scheduleDailyReminder(h, m);
+      await scheduleDailyReminder(currentHour, currentMinute);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Success', `Daily reminder set for ${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+      
+      // Format time for display (12-hour format)
+      const displayHour = currentHour === 0 ? 12 : currentHour > 12 ? currentHour - 12 : currentHour;
+      const ampm = currentHour >= 12 ? 'PM' : 'AM';
+      const displayTime = `${displayHour}:${currentMinute.toString().padStart(2, '0')} ${ampm}`;
+      
+      Alert.alert('Success', `Daily reminder set for ${displayTime}`);
     } else {
       Alert.alert('Permission Required', 'Please enable notifications in your device settings to receive daily reminders.');
     }
@@ -82,18 +87,7 @@ export default function SettingsScreen() {
     }
   };
 
-  const inputStyle = {
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    color: colors.text,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    fontSize: Typography.base,
-    textAlign: 'center' as const,
-    minHeight: 48,
-    width: 80,
-  };
+
 
   const SettingCard = ({ children, title }: { children: React.ReactNode; title: string }) => (
     <View style={{
@@ -196,56 +190,24 @@ export default function SettingsScreen() {
           <Text style={{ 
             fontSize: Typography.base,
             color: colors.textSecondary,
-            marginBottom: Spacing.md,
+            marginBottom: Spacing.lg,
           }}>
             Set when you'd like to receive your daily check-in reminder
           </Text>
           
-          <View style={{ 
-            flexDirection: 'row', 
-            alignItems: 'center', 
-            gap: Spacing.md,
-            marginBottom: Spacing.md,
-          }}>
-            <Ionicons name="time-outline" size={20} color={colors.primary} />
-            <TextInput 
-              value={hour} 
-              onChangeText={setHour} 
-              keyboardType="numeric" 
-              placeholder="20"
-              placeholderTextColor={colors.textTertiary}
-              style={inputStyle}
-              maxLength={2}
+          <View style={{ marginBottom: Spacing.lg }}>
+            <TimePicker 
+              hour={currentHour}
+              minute={currentMinute}
+              onTimeChange={onTimeChange}
             />
-            <Text style={{ 
-              fontSize: Typography.lg, 
-              fontWeight: Typography.bold,
-              color: colors.text,
-            }}>
-              :
-            </Text>
-            <TextInput 
-              value={min} 
-              onChangeText={setMin} 
-              keyboardType="numeric" 
-              placeholder="00"
-              placeholderTextColor={colors.textTertiary}
-              style={inputStyle}
-              maxLength={2}
-            />
-            <Text style={{ 
-              fontSize: Typography.sm,
-              color: colors.textSecondary,
-              flex: 1,
-            }}>
-              (24-hour format)
-            </Text>
           </View>
           
           <PrimaryButton 
-            title="Save Time" 
+            title="Save Reminder Time" 
             onPress={onSaveTime} 
-            size="sm"
+            size="md"
+            fullWidth
           />
         </SettingCard>
       </Animated.View>

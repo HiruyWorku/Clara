@@ -8,12 +8,20 @@ import { useColors } from '../hooks/useColors';
 import { Typography, Spacing } from '../constants/Colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { calculateDashboardStats, RoomStreakInfo } from '../lib/streaks';
 
 export default function DashboardScreen() {
   const colors = useColors();
   const rooms = useRoomsStore((s) => s.rooms);
   const refresh = useRoomsStore((s) => s.refresh);
   const [refreshing, setRefreshing] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState({
+    totalActiveStreaks: 0,
+    totalBestStreaks: 0,
+    activeRooms: 0,
+    completionRate: 0,
+    roomStreaks: [] as RoomStreakInfo[],
+  });
 
   useEffect(() => {
     refresh();
@@ -22,12 +30,29 @@ export default function DashboardScreen() {
   useFocusEffect(
     useCallback(() => {
       refresh();
+      loadDashboardStats();
     }, [refresh])
   );
+
+  const loadDashboardStats = async () => {
+    if (rooms.length === 0) return;
+    
+    try {
+      const stats = await calculateDashboardStats(rooms.map(r => r.id));
+      setDashboardStats(stats);
+    } catch (error) {
+      console.error('Failed to load dashboard stats:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardStats();
+  }, [rooms]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await refresh();
+    await loadDashboardStats();
     setRefreshing(false);
   };
 
@@ -36,15 +61,6 @@ export default function DashboardScreen() {
     if (hour < 12) return 'Good morning!';
     if (hour < 17) return 'Good afternoon!';
     return 'Good evening!';
-  };
-
-  const getTotalStreak = () => {
-    // TODO: Calculate actual streaks from checkins
-    return rooms.length * 2; // Placeholder
-  };
-
-  const getActiveRooms = () => {
-    return rooms.length;
   };
 
   return (
@@ -98,7 +114,7 @@ export default function DashboardScreen() {
             color: colors.text,
             marginTop: Spacing.xs,
           }}>
-            {getTotalStreak()}
+            {dashboardStats.totalActiveStreaks}
           </Text>
           <Text style={{ 
             fontSize: Typography.sm, 
@@ -125,7 +141,7 @@ export default function DashboardScreen() {
             color: colors.text,
             marginTop: Spacing.xs,
           }}>
-            {getActiveRooms()}
+            {dashboardStats.activeRooms}
           </Text>
           <Text style={{ 
             fontSize: Typography.sm, 
@@ -183,19 +199,22 @@ export default function DashboardScreen() {
             </Text>
           </View>
         ) : (
-          rooms.map((room, index) => (
-            <Animated.View 
-              key={room.id}
-              entering={FadeInDown.delay(400 + index * 100).duration(600)}
-            >
-              <RoomCard 
-                name={room.name} 
-                emoji={room.emoji} 
-                currentStreak={Math.floor(Math.random() * 10)} // TODO: Real streak calculation
-                lastResult={Math.random() > 0.5 ? 'yes' : 'no'} // TODO: Real last result
-              />
-            </Animated.View>
-          ))
+          rooms.map((room, index) => {
+            const roomStreakInfo = dashboardStats.roomStreaks.find(rs => rs.roomId === room.id);
+            return (
+              <Animated.View 
+                key={room.id}
+                entering={FadeInDown.delay(400 + index * 100).duration(600)}
+              >
+                <RoomCard 
+                  name={room.name} 
+                  emoji={room.emoji} 
+                  currentStreak={roomStreakInfo?.currentStreak || 0}
+                  lastResult={roomStreakInfo?.lastResult || null}
+                />
+              </Animated.View>
+            );
+          })
         )}
       </Animated.View>
     </ScreenWrapper>

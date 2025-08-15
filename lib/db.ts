@@ -139,6 +139,19 @@ export async function getCheckinsByRoom(roomId: string, from?: string, to?: stri
   );
 }
 
+export async function getAllCheckins(): Promise<Checkin[]> {
+  const db = await getDb();
+  return db.getAllAsync<Checkin>('SELECT * FROM checkins ORDER BY date DESC');
+}
+
+export async function getLatestCheckinByRoom(roomId: string): Promise<Checkin | null> {
+  const db = await getDb();
+  return db.getFirstAsync<Checkin>(
+    'SELECT * FROM checkins WHERE room_id = ? ORDER BY date DESC LIMIT 1',
+    [roomId]
+  );
+}
+
 export async function createCheckin(payload: {
   id: string;
   roomId: string;
