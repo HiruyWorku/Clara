@@ -1,3 +1,15 @@
+<img width="1619" height="879" alt="clara2" src="https://github.com/user-attachments/assets/c0d1460a-3d14-49e4-ac88-43182e008dc0" />
+
+
+
+
+
+
+
+
+
+
+
 # Clara - Your Tidy Life Coach
 
 A React Native mobile application that helps users maintain organized spaces through daily check-ins, habit tracking, and motivational insights. Clara acts as a personal tidiness coach, providing gentle reminders and celebrating progress through streak tracking and data visualization.
